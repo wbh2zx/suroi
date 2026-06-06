@@ -146,7 +146,54 @@ http://localhost:5173/?language=zh
 
 ---
 
-## 七、6. 一键启动脚本（可选，等WSL安装后使用）
+## 七、6. 纯离线人机模式（Bot Mode）
+
+无需联网、无需匹配真人，启动后自动生成 25 个 AI 机器人陪练。
+
+### 首次使用需配置
+编辑 `server\config.json`，添加：
+```json
+"plugins": ["botPlugin"]
+```
+（加在 `"maxGames"` 之后即可）
+
+### 启动方式
+```cmd
+cd /d G:\game\suroi
+bun dev:bot
+```
+看到 `[BotPlugin] 25 bots active` 即人机就绪。
+
+然后另开终端启动前端（同普通模式）。
+
+### 人机特征
+- 皮肤：统一 Target Practice（红白练习靶）
+- 名字：冒号 `:` 开头，如 `:Ace0`、`:Ghost5`
+- 装备：随机枪械（AK、M4、霰弹、冲锋枪等）+ 无限弹药
+- 行为：漫游 → 索敌追击 → 射击（精准度故意偏低）
+- 死亡后 3~6 秒自动重生，维持 25 人数量
+
+### BOT 参数调节
+编辑 `server\src\plugins\botPlugin.ts` 顶部常量：
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| BOT_COUNT | 25 | 人机总数（环境变量 BOT_COUNT 可覆盖） |
+| ATTACK_RANGE | 40 | 开枪距离 |
+| CHASE_RANGE | 100 | 追击距离 |
+| AIM_ACCURACY | 0.55 | 命中概率（0~1） |
+| RESPAWN_DELAY_MIN | 3000 | 重生最短延迟(ms) |
+| RESPAWN_DELAY_MAX | 6000 | 重生最长延迟(ms) |
+
+### 模式区分
+| 命令 | 模式 | 说明 |
+|------|------|------|
+| `bun dev:server` | 在线模式 | 原版，需匹配真人 |
+| `bun dev:bot` | 人机模式 | 自动填满 25 bot |
+| `bun dev` | 一键全启 | 原版客户端+服务端 |
+
+---
+
+## 八、8. 一键启动脚本（可选，等WSL安装后使用）
 
 在任意位置新建文本文档，粘贴下方代码，重命名为 `启动游戏.bat`
 

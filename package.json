@@ -8,6 +8,8 @@
     "dev": "bun -F '*' dev",
     "dev:client": "cd client && bun dev",
     "dev:server": "cd server && bun dev",
+    "dev:bot": "cd server && BOT_MODE=true BOT_COUNT=25 bun --hot src/server.ts",
+    "dev:bot-win": "cd server && set BOT_MODE=true&& set BOT_COUNT=25&& bun --hot src/server.ts",
     "dev:test": "cd tests && bun stressTest",
     "watch:server": "cd server && bunx --bun tsc --noEmit --watch",
     "updateConfigSchema": "cd server && bun updateConfigSchema",
