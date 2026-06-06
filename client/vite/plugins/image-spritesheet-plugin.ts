@@ -3,7 +3,20 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSy
 import { rm, writeFile } from "fs/promises";
 import { type IOption, MaxRectsPacker } from "maxrects-packer";
 import path from "path";
-import { type SpritesheetData } from "pixi.js";
+// Inline type to avoid loading pixi.js at config time (causes "navigator is not defined" in Node)
+interface SpritesheetFrameData {
+    frame: { x: number; y: number; w: number; h: number }
+    sourceSize: { w: number; h: number }
+}
+interface SpritesheetData {
+    frames: Record<string, SpritesheetFrameData>
+    animations?: Record<string, string[]>
+    meta: {
+        image?: string
+        scale: number | string
+        size?: { w: number; h: number }
+    }
+}
 import { Canvas, Image, loadImage, type RenderOptions } from "skia-canvas";
 import { type Plugin } from "vite";
 import { type ModeName, Modes, type SpritesheetNames } from "../../../common/src/definitions/modes";

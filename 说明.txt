@@ -1,0 +1,221 @@
+# Suroi 完整部署流程（Windows 专属 | Bun + 换盘+国内镜像+一键启动）
+全程按顺序执行，一步不漏即可正常运行游戏
+
+---
+
+## 一、前置准备
+1. 已安装 Git（能正常执行 `git` 命令）
+2. 已安装 Node.js v20+（验证：`node -v`）
+3. 关闭所有 CMD、PowerShell 窗口
+
+---
+
+## 二、1. 拉取 Suroi 源码
+打开 CMD，执行：
+```cmd
+cd /d G:\game
+:: 国内镜像加速克隆，避免GitHub慢（梯子端口）
+git config --global http.proxy http://127.0.0.1:10090
+git config --global https.proxy http://127.0.0.1:10090
+
+git clone https://github.com/HasangerGames/suroi.git
+```
+等待克隆完成，得到 `G:\game\suroi` 文件夹
+
+---
+
+## 三、2. 安装 Bun（Windows 版）
+### 2.1 执行在线安装
+```cmd
+powershell -c "irm bun.sh/install.ps1|iex"
+```
+安装完成提示：`Bun x.x.x was installed successfully`
+默认安装路径：`C:\Users\wbh\.bun`
+
+### 2.2 迁移 Bun 到 D 盘（释放C盘空间，必做）
+1. 手动剪切文件夹
+   将 `C:\Users\wbh\.bun` 整体剪切到 `D:\tools\.bun`（没有`tools`文件夹自行新建）
+2. 配置**用户环境变量**（Win+R 输入 `sysdm.cpl` → 高级 → 环境变量）
+   在**上方 用户变量**区域操作：
+
+#### ① 新建2个变量
+| 变量名 | 变量值 |
+|--------|--------|
+| BUN_INSTALL | D:\tools\.bun |
+| BUN_INSTALL_CACHE_DIR | D:\tools\.bun\install\cache |
+
+#### ② 配置国内镜像源（新增用户变量）
+变量名：`BUN_REGISTRY`
+变量值：`https://registry.npmmirror.com`
+
+#### ③ 修改 Path 用户变量
+编辑 `Path`，**删除**旧路径 `C:\Users\wbh\.bun\bin`
+**新增**路径：
+```
+D:\tools\.bun\bin
+```
+
+3. 保存全部窗口，**彻底关闭所有终端，重新打开 CMD**
+
+### 2.3 验证 Bun 环境（新CMD执行）
+```cmd
+:: 查看版本，正常输出版本号即PATH生效
+bun -v
+
+:: 查看Bun程序位置，应为 D:\tools\.bun\bin
+bun pm bin -g
+
+:: 查看镜像源，输出镜像地址即生效
+echo %BUN_REGISTRY%
+```
+
+---
+
+## 四、3. 安装 Suroi 项目依赖
+```cmd
+:: 进入项目目录
+cd /d G:\game\suroi
+
+:: 清理残留（如有旧node_modules）
+rd /s /q node_modules
+rd /s /q client\node_modules
+rd /s /q server\node_modules
+
+:: 安装依赖（自动走国内镜像）
+bun install
+```
+等待安装完成（首次耗时较长，网络卡住可重复执行）
+
+### 临时救急（安装卡死时）
+```cmd
+:: 临时强制使用镜像安装
+set BUN_REGISTRY=https://registry.npmmirror.com
+bun install
+```
+
+---
+
+## 五、4. Windows 平台已知问题与修复
+
+Windows 上直接 `bun dev` 会遇到以下问题，按顺序修复：
+
+### 4.1 skia-canvas 原生模块问题
+bun 无法加载 skia-canvas 的 .node 原生二进制（dlopen 不兼容），但 Node.js 可以。
+→ 服务端用 bun 启动，前端 vite 用 Node.js 启动（见下方分步启动方案）。
+
+### 4.2 PixiJS "navigator is not defined" 错误
+Vite 加载配置时会导入 pixi.js，在 Node 环境缺少 `navigator` 全局对象。
+→ 已修复：`client/vite/plugins/image-spritesheet-plugin.ts` 中的 PixiJS 类型导入已改为内联定义。
+
+### 4.3 API 端口不匹配
+原配置 API_URL 指向 `localhost:8080`，实际服务端监听 `8000`。
+→ 已修复：`client/vite/vite.dev.ts` 中 API_URL 已改为 `http://localhost:8000/api`。
+
+---
+
+## 六、5. 分步启动（Windows 推荐方案）
+
+### 打开终端1 —— 启动服务端
+```cmd
+cd /d G:\game\suroi
+bun dev:server
+```
+看到 `Listening on 127.0.0.1:8000` 即启动成功。
+
+### 打开终端2 —— 启动前端
+```cmd
+cd /d G:\game\suroi\client
+node ..\node_modules\vite\bin\vite.js
+```
+看到 `http://localhost:5173/` 即启动成功。
+
+### 访问游戏
+浏览器打开 `http://localhost:5173/`
+
+中文用户推荐直接访问：
+```
+http://localhost:5173/?language=zh
+```
+
+### 服务端口一览
+| 服务 | 端口 | 说明 |
+|------|------|------|
+| 前端 Vite | 5173 | 游戏 Web 页面 |
+| API 服务器 | 8000 | 用户认证、匹配、组队 |
+| 游戏服务器 | 8001 | 游戏逻辑 WebSocket |
+
+---
+
+## 七、6. 一键启动脚本（可选，等WSL安装后使用）
+
+在任意位置新建文本文档，粘贴下方代码，重命名为 `启动游戏.bat`
+
+```batch
+@echo off
+chcp 65001>nul
+set "PROJ_PATH=G:\game\suroi"
+set "CLIENT_PORT=5173"
+
+cd /d "%PROJ_PATH%"
+
+:: 启动游戏服务端（后台）
+start "" /min cmd /c "bun dev:server"
+
+:: 启动前端（后台）
+start "" /min cmd /c "cd /d %PROJ_PATH%\client && node ..\node_modules\vite\bin\vite.js"
+
+:: 等待服务就绪后自动打开浏览器
+powershell -Command "$p=%CLIENT_PORT%;$cnt=0;while($cnt -lt 40){Start-Sleep 2;$cnt++;try{$tcp=[Net.Sockets.TCPClient]::new('127.0.0.1',$p);$tcp.Close();Start-Process 'http://127.0.0.1:'+$p+'/?language=zh';exit}catch{}}"
+
+exit
+```
+
+---
+
+## 八、7. 语言设置
+
+游戏默认语言为英文，不支持自动检测浏览器语言，需手动切换：
+
+- **URL 参数（推荐）**：访问 `http://localhost:5173/?language=zh`
+- **游戏内设置**：主菜单点击设置按钮 → 语言下拉 → 选择「中文（简体）」
+
+支持的语言：
+- 简体中文（zh.hjson）：1028 行，翻译最完整的语言
+- 繁體中文（tw.hjson）：758 行
+
+---
+
+## 九、8. 推荐方案：WSL2（一劳永逸解决 Windows 兼容问题）
+
+Windows 原生环境存在 Unix 符号链接、原生模块加载等兼容问题。
+强烈建议使用 WSL2 运行项目，所有问题消失。
+
+### 安装 WSL（管理员终端）
+```cmd
+wsl --install -d Ubuntu
+```
+重启电脑后，进入 Ubuntu 终端：
+
+```bash
+# 安装 bun
+curl -fsSL https://bun.sh/install | bash
+
+# 进入项目（WSL 可访问 Windows 文件）
+cd /mnt/g/game/suroi
+
+# 安装依赖并启动（一个命令搞定）
+bun install
+bun dev
+```
+
+WSL 下 `bun dev` 直接全部正常工作，无需任何修改，无需分步启动。
+
+---
+
+## 常见问题速查
+1. `bun` 不是内部命令 → 环境变量未生效，**重启电脑/终端**重试
+2. `bun install` 下载慢 → 检查 `BUN_REGISTRY` 环境变量是否配置正确
+3. `skia-canvas` 安装失败 → 网络无法下载预编译二进制，确认梯子可用或切 WSL2
+4. `navigator is not defined` → 确认已使用 `client/vite/plugins/image-spritesheet-plugin.ts` 的修复版本
+5. 浏览器打不开游戏 → 确认前端端口 `5173`、服务端端口 `8000` 均未被占用
+6. 连接游戏失败 → 确认服务端和前端两个终端窗口都在运行中
