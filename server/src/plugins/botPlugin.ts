@@ -1,4 +1,5 @@
 import { GameConstants, TeamMode } from "@common/constants";
+import { DefinitionType } from "@common/utils/objectDefinitions";
 import { Guns } from "@common/definitions/items/guns";
 import { Loots } from "@common/definitions/loots";
 import { PacketType } from "@common/packets/packet";
@@ -6,6 +7,7 @@ import { CircleHitbox } from "@common/utils/hitbox";
 import { Geometry } from "@common/utils/math";
 import { Vec, type Vector } from "@common/utils/vector";
 import { type GunItem } from "../inventory/gunItem";
+import { type Loot } from "../objects/loot";
 import { type Player } from "../objects/player";
 import { GamePlugin } from "../pluginManager";
 
@@ -497,6 +499,9 @@ export default class BotPlugin extends GamePlugin {
                 }
             }
 
+            // ---- loot better equipment if nearby (every ~1s) ----
+            if (this._logTick % 30 === 0) this._tryLootUpgrade(data);
+
             // ---- proactive obstacle avoidance (raycast-based) ----
             this._steerClear(data);
 
@@ -840,6 +845,62 @@ export default class BotPlugin extends GamePlugin {
     // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------
+
+    /**
+     * Scan nearby loot for equipment upgrades (armor/helmet/backpack).
+     * Only picks up if the loot is strictly better (higher level).
+     */
+    private _tryLootUpgrade(data: BotData): void {
+        const bot = data.player;
+        const query = new CircleHitbox(5, bot.position);
+        const nearby = this.game.grid.intersectsHitbox(query);
+
+        for (const obj of nearby) {
+            if (!obj.isLoot || obj.dead) continue;
+            const loot = obj as Loot;
+            const def = loot.definition;
+            const defType = "defType" in def ? def.defType : (def as any).type;
+
+            // Only care about equipment upgrades
+            if (defType !== DefinitionType.Armor && defType !== DefinitionType.Backpack && defType !== DefinitionType.Scope) continue;
+
+            let lootLevel = 0;
+            let currentLevel = 0;
+
+            if (defType === DefinitionType.Scope) {
+                lootLevel = (def as any).zoomLevel ?? 0;
+                currentLevel = bot.effectiveScope?.zoomLevel ?? 0;
+            } else if (defType === DefinitionType.Armor) {
+                lootLevel = (def as any).level ?? 0;
+                const armorType = (def as any).armorType;
+                if (armorType === 0) { // Helmet
+                    currentLevel = bot.inventory.helmet?.level ?? 0;
+                } else { // Vest
+                    currentLevel = bot.inventory.vest?.level ?? 0;
+                }
+            } else {
+                lootLevel = (def as any).level ?? 0;
+                currentLevel = bot.inventory.backpack.level ?? 0;
+            }
+
+            if (lootLevel <= currentLevel) continue; // not an upgrade
+
+            // Only pick up if actually interactable
+            if (loot.canInteract(bot) !== true) continue;
+
+            // Pick it up — loot.interact handles swapping, dropping old gear
+            loot.interact(bot);
+
+            // If scope, ensure effectiveScope updates so vision range reflects it
+            if (defType === DefinitionType.Scope) {
+                bot.effectiveScope = (def as any).idString;
+            }
+
+            const itemName = (def as any).idString ?? (def as any).name ?? defType;
+            process.stdout.write(`[BOT LOOT] ${bot.name} picked up ${itemName} L${currentLevel}→L${lootLevel}\n`);
+            return; // one per tick is enough
+        }
+    }
 
     /**
      * Find the best cover position near the bot that blocks enemy LOS.
