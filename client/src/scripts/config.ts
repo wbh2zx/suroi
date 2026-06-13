@@ -5,8 +5,8 @@ export const Config = {
     regions: {
         dev: {
             name: "Local Server",
-            mainAddress: "http://127.0.0.1:8000",
-            gameAddress: "ws://127.0.0.1:<gameID>",
+            mainAddress: "http://26.99.19.160:8000",
+            gameAddress: "ws://26.99.19.160:<gameID>",
             offset: 8001
         }/* ,
         na: {

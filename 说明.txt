@@ -259,10 +259,54 @@ WSL 下 `bun dev` 直接全部正常工作，无需任何修改，无需分步�
 
 ---
 
+## 九、局域网/VPN 多人游戏配置
+
+### 9.1 服务端配置（server/config.json）
+```json
+{
+    "hostname": "0.0.0.0",       // 必须！127.0.0.1 只能本机访问
+    "teamMode": "duo",            // solo / duo / squad
+    "maxPlayersPerGame": 60,      // 必须 > bot数 + 玩家数
+    "minTeamsToStart": 20         // 必须 > bot队伍数，否则人没进就关门了
+}
+```
+**minTeamsToStart 计算**：bot数 ÷ 每队人数 + 1
+- duo: 38 bot → 19队 → 设为20
+- squad: 36 bot → 9队 → 设为10
+
+### 9.2 客户端配置（client/src/scripts/config.ts）
+```typescript
+mainAddress: "http://你的IP:8000",      // 局域网IP 或 VPN IP
+gameAddress: "ws://你的IP:<gameID>",
+```
+
+
+### 9.4 双人组队操作及常见报错
+
+**核心配置（三步缺一不可）**：
+
+| 改什么 | 文件 | 说明 |
+|--------|------|------|
+| `hostname: "0.0.0.0"` | `server/config.json` | 必须！`127.0.0.1` 只接受本机连接 |
+| `minTeamsToStart: 20` | `server/config.json` | 必须 > bot队伍数（duo 38 bot = 19队，设20） |
+| `mainAddress/gameAddress` | `client/src/scripts/config.ts` | 必须和浏览器地址栏 IP 一致 |
+
+**操作流程**：
+- 不要直接点 Play Duo
+- 一人点**"创建队伍"** → 拿到 4 位码 → 另一人点**"加入队伍"** → 输入码 → 双方准备 → 开始
+
+### 9.5 Vite 端口变动
+如果 5173 被占用，Vite 会自动跳到 3000。注意浏览器地址栏端口号。
+
+---
+
 ## 常见问题速查
 1. `bun` 不是内部命令 → 环境变量未生效，**重启电脑/终端**重试
 2. `bun install` 下载慢 → 检查 `BUN_REGISTRY` 环境变量是否配置正确
 3. `skia-canvas` 安装失败 → 网络无法下载预编译二进制，确认梯子可用或切 WSL2
 4. `navigator is not defined` → 确认已使用 `client/vite/plugins/image-spritesheet-plugin.ts` 的修复版本
-5. 浏览器打不开游戏 → 确认前端端口 `5173`、服务端端口 `8000` 均未被占用
+5. 浏览器打不开游戏 → 确认前端端口（可能是 `5173` 或 `3000`）、服务端端口 `8000` 均未被占用
 6. 连接游戏失败 → 确认服务端和前端两个终端窗口都在运行中
+7. `ERR_BLOCKED_BY_LOCAL_NETWORK_ACCESS_CHECKS` → 见 9.4 三步配置：config.ts 地址和浏览器 IP 必须一致
+8. "加入队伍失败" → 同上，检查 `hostname` 是否为 `0.0.0.0`
+9. "查找游戏失败" → 点"创建队伍"而非 Play Duo；检查 `minTeamsToStart` > bot队伍数
