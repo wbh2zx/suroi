@@ -7,6 +7,7 @@ export const Config = {
             name: "Local Server",
             mainAddress: "http://127.0.0.1:8000",
             gameAddress: "ws://127.0.0.1:<gameID>",
+            cmdAddress: "http://127.0.0.1:8009/bot_cmd",
             offset: 8001
         }/* ,
         na: {
@@ -68,6 +69,11 @@ export interface Region {
      * The address of the region's main server.
      */
     readonly mainAddress: string
+
+    /**
+     * Address of the bot command server.
+     */
+    readonly cmdAddress: string
 
     /**
      * Pattern used to determine the address of the region's game servers.

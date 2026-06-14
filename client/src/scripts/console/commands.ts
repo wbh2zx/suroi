@@ -1797,6 +1797,30 @@ export function setUpCommands(): void {
         }
     );
 
+    Command.createCommand(
+        "bot_hostile",
+        (value) => {
+            const v = value === "true" || value === "1";
+            const cmdAddr = Config.regions[Config.defaultRegion]?.cmdAddress || "http://127.0.0.1:8009/bot_cmd";
+            fetch(cmdAddr, {
+                method: "POST",
+                body: JSON.stringify({ hostileToBots: v })
+            }).then(() => {
+                GameConsole.log(`[BotCmd] hostileToBots = ${v} — bots ${v ? "fight each other" : "only attack humans"}`);
+            }).catch(() => {
+                GameConsole.log("[BotCmd] Failed — is the server running?");
+            });
+        },
+        {
+            short: "Toggle bot hostility towards other bots",
+            long: "bot_hostile true/false — if false, bots only attack humans and ignore each other",
+            signatures: [{
+                args: [{ name: "hostileToBots", type: ["boolean"] }],
+                noexcept: false
+            }]
+        }
+    );
+
     GameConsole.handleQuery(`
         alias +map_ping "+emote_wheel; +map_ping_wheel" & alias -map_ping "-emote_wheel; -map_ping_wheel";\
         alias toggle_minimap "toggle cv_minimap_minimized";\

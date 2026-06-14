@@ -103,6 +103,17 @@ const BOT_SKINS = [
 ];
 
 // ---------------------------------------------------------------------------
+// Bot commands — write to server/bot_cmd.json, bot reads every ~1s
+// ---------------------------------------------------------------------------
+
+interface BotCommands {
+    /** If false, bots only attack humans (not other bots). Default true. */
+    hostileToBots?: boolean;
+}
+
+const defaultCommands: BotCommands = { hostileToBots: true };
+
+// ---------------------------------------------------------------------------
 // Bot brain — lightweight FSM per bot
 // ---------------------------------------------------------------------------
 
@@ -145,6 +156,12 @@ interface BotData {
 // Plugin
 // ---------------------------------------------------------------------------
 
+// Command state in globalThis — survives hot-reload
+const _g = globalThis as Record<string, unknown>;
+if (!_g.__botCmdState) _g.__botCmdState = { ...defaultCommands };
+if (!_g.__botCmdServerStarted) _g.__botCmdServerStarted = false;
+const _cmdState = _g.__botCmdState as BotCommands;
+
 export default class BotPlugin extends GamePlugin {
     private readonly _bots = new Set<BotData>();
     private _spawned = false;
@@ -154,6 +171,35 @@ export default class BotPlugin extends GamePlugin {
     protected override initListeners(): void {
         // Only activate when bot mode is explicitly enabled
         if (!process.env.BOT_MODE) return;
+
+        // ---- command HTTP server (port 8009) ----
+        if (!_g.__botCmdServerStarted) {
+            _g.__botCmdServerStarted = true as any;
+            const corsHdr = {
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+                "Access-Control-Allow-Headers": "Content-Type"
+            };
+            Bun.serve({
+                port: 8009,
+                hostname: "127.0.0.1",
+                async fetch(req) {
+                    const url = new URL(req.url);
+                    if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHdr });
+                    if (url.pathname === "/bot_cmd") {
+                        if (req.method === "POST") {
+                            try {
+                                const body = JSON.parse(await req.text()) as Partial<BotCommands>;
+                                if (typeof body.hostileToBots === "boolean") _cmdState.hostileToBots = body.hostileToBots;
+                            } catch { /* ignore parse errors */ }
+                            return new Response("ok", { headers: corsHdr });
+                        }
+                        return new Response(JSON.stringify(_cmdState), { headers: { ...corsHdr, "Content-Type": "application/json" } });
+                    }
+                    return new Response("not found", { status: 404, headers: corsHdr });
+                }
+            });
+        }
 
         this.on("game_created", this._onGameCreated.bind(this));
         this.on("game_tick", this._onTick.bind(this));
@@ -406,6 +452,8 @@ export default class BotPlugin extends GamePlugin {
                 // Skip self. Skip teammates only in team modes.
                 if (other === bot) continue;
                 if (this.game.isTeamMode && other.teamID === bot.teamID) continue;
+                // Command: hostileToBots=false → bots only attack humans
+                if (!_cmdState.hostileToBots && other.name.startsWith(":")) continue;
                 const d = Geometry.distance(bot.position, other.position);
                 if (d < nearestDist) {
                     nearestDist = d;
