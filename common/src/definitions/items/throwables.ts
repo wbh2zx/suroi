@@ -199,6 +199,51 @@ export const Throwables = new InventoryItemDefinitions<ThrowableDefinition>([
         }
     },
     {
+        idString: "he_grenade",
+        name: "高爆手雷",
+        defType: DefinitionType.Throwable,
+        tier: Tier.C,
+        cookable: true,
+        fuseTime: 4000,
+        cookTime: 150,
+        throwTime: 150,
+        speedMultiplier: 1,
+        cookSpeedMultiplier: 0.7,
+        impactDamage: 1,
+        obstacleMultiplier: 20,
+        hitboxRadius: 1,
+        fireDelay: 250,
+        physics: {
+            maxThrowDistance: 128,
+            initialZVelocity: 4,
+            initialAngularVelocity: 10,
+            initialHeight: 0.5
+        },
+        image: {
+            position: Vec(60, 43),
+            angle: 60,
+            zIndex: 5,
+            anchor: Vec(0.5, 0.68)
+        },
+        detonation: {
+            explosion: "he_grenade_explosion"
+        },
+        animation: {
+            pinImage: "proj_he_pin",
+            liveImage: "proj_he",
+            leverImage: "proj_he_lever",
+            cook: {
+                cookingImage: "proj_he_nopin",
+                leftFist: Vec(2.5, 0),
+                rightFist: Vec(-0.5, 2.15)
+            },
+            throw: {
+                leftFist: Vec(1.9, -1.75),
+                rightFist: Vec(4, 2.15)
+            }
+        }
+    },
+    {
         idString: "smoke_grenade",
         name: "Smoke Grenade",
         defType: DefinitionType.Throwable,

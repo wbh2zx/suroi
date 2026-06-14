@@ -608,6 +608,37 @@ export const Explosions = new ObjectDefinitions<ExplosionDefinition>([
         decal: "frag_explosion_decal"
     },
     {
+        idString: "he_grenade_explosion",
+        name: "HE Grenade",
+        defType: DefinitionType.Explosion,
+        damage: 200,
+        obstacleMultiplier: 1.15,
+        radius: {
+            min: 14,
+            max: 30
+        },
+        cameraShake: {
+            duration: 300,
+            intensity: 45
+        },
+        animation: {
+            duration: 1000,
+            tint: 0xff4400,
+            scale: 1.8
+        },
+        shrapnelCount: 12,
+        ballistics: {
+            shrapnel: true,
+            damage: 18,
+            obstacleMultiplier: 1,
+            speed: 0.08,
+            range: 22,
+            rangeVariance: 1
+        },
+        sound: "frag_grenade",
+        decal: "frag_explosion_decal"
+    },
+    {
         idString: "smoke_grenade_explosion",
         name: "Smoke Grenade",
         defType: DefinitionType.Explosion,
